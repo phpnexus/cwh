@@ -1,6 +1,6 @@
 {
-    "name": "maxbanton/cwh",
-    "homepage": "https://github.com/maxbanton/cwh",
+    "name": "phpnexus/cwh",
+    "homepage": "https://github.com/phpnexus/cwh",
     "type": "library",
     "description": "AWS CloudWatch Handler for Monolog library",
     "keywords": [
@@ -17,8 +17,8 @@
         }
     ],
     "support": {
-        "issues": "https://github.com/maxbanton/cwh/issues",
-        "source": "https://github.com/maxbanton/cwh"
+        "issues": "https://github.com/phpnexus/cwh/issues",
+        "source": "https://github.com/phpnexus/cwh"
     },
     "require": {
         "php": "^7.2 || ^8",
