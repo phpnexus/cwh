@@ -1,6 +1,6 @@
 <?php
 
-namespace Maxbanton\Cwh\Handler;
+namespace PhpNexus\Cwh\Handler;
 
 use Aws\CloudWatchLogs\CloudWatchLogsClient;
 use Monolog\Formatter\FormatterInterface;
