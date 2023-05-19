@@ -32,7 +32,7 @@ This library uses AWS API through AWS PHP SDK, which has limits on concurrent re
 Install the latest version with [Composer](https://getcomposer.org/) by running
 
 ```bash
-$ composer require maxbanton/cwh:^2.0
+$ composer require phpnexus/cwh:^3.0
 ```
 
 ## Basic Usage
@@ -40,10 +40,10 @@ $ composer require maxbanton/cwh:^2.0
 <?php
 
 use Aws\CloudWatchLogs\CloudWatchLogsClient;
-use Maxbanton\Cwh\Handler\CloudWatch;
 use Monolog\Logger;
 use Monolog\Level;
 use Monolog\Formatter\JsonFormatter;
+use PhpNexus\Cwh\Handler\CloudWatch;
 
 $sdkParams = [
     'region' => 'eu-west-1',
