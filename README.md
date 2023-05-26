@@ -2,13 +2,15 @@
 
 # AWS CloudWatch Logs Handler for Monolog
 
-[![Actions Status](https://github.com/maxbanton/cwh/workflows/Pipeline/badge.svg)](https://github.com/maxbanton/cwh/actions)
-[![Coverage Status](https://img.shields.io/coveralls/maxbanton/cwh/master.svg)](https://coveralls.io/github/maxbanton/cwh?branch=master)
-[![License](https://img.shields.io/packagist/l/maxbanton/cwh.svg)](https://github.com/maxbanton/cwh/blob/master/LICENSE)
-[![Version](https://img.shields.io/packagist/v/maxbanton/cwh.svg)](https://packagist.org/packages/maxbanton/cwh)
-[![Downloads](https://img.shields.io/packagist/dt/maxbanton/cwh.svg)](https://packagist.org/packages/maxbanton/cwh/stats)
+[![Actions Status](https://github.com/phpnexus/cwh/workflows/Pipeline/badge.svg)](https://github.com/phpnexus/cwh/actions)
+[![Coverage Status](https://img.shields.io/coveralls/phpnexus/cwh/master.svg)](https://coveralls.io/github/phpnexus/cwh?branch=master)
+[![License](https://img.shields.io/packagist/l/phpnexus/cwh.svg)](https://github.com/phpnexus/cwh/blob/master/LICENSE)
+[![Version](https://img.shields.io/packagist/v/phpnexus/cwh.svg)](https://packagist.org/packages/phpnexus/cwh)
+[![Downloads](https://img.shields.io/packagist/dt/phpnexus/cwh.svg)](https://packagist.org/packages/phpnexus/cwh/stats)
 
-Handler for PHP logging library [Monolog](https://github.com/Seldaek/monolog) for sending log entries to 
+***This is a fork and continuation of the original [maxbanton/cwh](https://github.com/maxbanton/cwh) repository.***
+
+Handler for PHP logging library [Monolog](https://github.com/Seldaek/monolog) for sending log entries to
 [AWS CloudWatch Logs](http://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/WhatIsCloudWatchLogs.html) service.
 
 Before using this library, it's recommended to get acquainted with the [pricing](https://aws.amazon.com/en/cloudwatch/pricing/) for AWS CloudWatch services.
@@ -23,7 +25,7 @@ This library uses AWS API through AWS PHP SDK, which has limits on concurrent re
 * AWS account with proper permissions (see list of permissions below)
 
 ## Features
-* Up to 10000 batch logs sending in order to avoid _Rate exceeded_ errors 
+* Up to 10000 batch logs sending in order to avoid _Rate exceeded_ errors
 * Log Groups creating with tags
 * AWS CloudWatch Logs staff lazy loading
 * Suitable for web applications and for long-living CLI daemons and workers
@@ -90,11 +92,11 @@ $log->error('Baz');
  - [Symfony](http://symfony.com/doc/current/logging.html) ([Example](https://github.com/maxbanton/cwh/issues/10#issuecomment-296173601))
  - [Lumen](https://lumen.laravel.com/docs/5.2/errors)
  - [Laravel](https://laravel.com/docs/5.4/errors) ([Example](https://stackoverflow.com/a/51790656/1856778))
-  
+
  [And many others](https://github.com/Seldaek/monolog#framework-integrations)
- 
+
 # AWS IAM needed permissions
-if you prefer to use a separate programmatic IAM user (recommended) or want to define a policy, make sure following permissions are included:
+If you prefer to use a separate programmatic IAM user (recommended) or want to define a policy, make sure following permissions are included:
 1. `CreateLogGroup` [aws docs](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_CreateLogGroup.html)
 1. `CreateLogStream` [aws docs](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_CreateLogStream.html)
 1. `PutLogEvents` [aws docs](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutLogEvents.html)
@@ -104,7 +106,11 @@ if you prefer to use a separate programmatic IAM user (recommended) or want to d
 
 When setting the `$createGroup` argument to `false`, permissions `DescribeLogGroups` and `CreateLogGroup` can be omitted
 
-## AWS IAM Policy full json example
+## Sample 1: Write to any log stream in a log group
+This policy example allows writing to any log stream in a log group (named `my-app`). The log streams will be created automatically.
+
+*Note: The first statement allows creation of log groups, and is not required when setting the `$createGroup` argument to `false`.*
+
 ```json
 {
     "Version": "2012-10-17",
@@ -115,7 +121,38 @@ When setting the `$createGroup` argument to `false`, permissions `DescribeLogGro
                 "logs:CreateLogGroup",
                 "logs:DescribeLogGroups"
             ],
-            "Resource": "*"
+            "Resource": "arn:aws:logs:*:*:log-group:*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogStream",
+                "logs:DescribeLogStreams",
+                "logs:PutRetentionPolicy",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "arn:aws:logs:*:*:log-group:my-app:*"
+        }
+    ]
+}
+```
+
+## Sample 2: Write to specific log streams in a log group
+This policy example allows writing to specific log streams (named `my-stream-1` and `my-stream-2`) in a log group (named `my-app`). The log streams will be created automatically.
+
+*Note: The first statement allows creation of log groups, and is not required when setting the `$createGroup` argument to `false`.*
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:DescribeLogGroups"
+            ],
+            "Resource": "arn:aws:logs:*:*:log-group:*"
         },
         {
             "Effect": "Allow",
@@ -124,7 +161,7 @@ When setting the `$createGroup` argument to `false`, permissions `DescribeLogGro
                 "logs:DescribeLogStreams",
                 "logs:PutRetentionPolicy"
             ],
-            "Resource": "{LOG_GROUP_ARN}"
+            "Resource": "arn:aws:logs:*:*:log-group:my-app:*"
         },
         {
             "Effect": "Allow",
@@ -132,19 +169,21 @@ When setting the `$createGroup` argument to `false`, permissions `DescribeLogGro
                 "logs:PutLogEvents"
             ],
             "Resource": [
-                "{LOG_STREAM_1_ARN}",
-                "{LOG_STREAM_2_ARN}"
+                "arn:aws:logs:*:*:log-group:my-app:log-stream:my-stream-1",
+                "arn:aws:logs:*:*:log-group:my-app:log-stream:my-stream-2",
             ]
         }
     ]
 }
 ```
 
+Reference: [Actions, resources, and condition keys for Amazon CloudWatch Logs](https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazoncloudwatchlogs.html)
+
 ## Issues
-Feel free to [report any issues](https://github.com/maxbanton/cwh/issues/new)
+Feel free to [report any issues](https://github.com/phpnexus/cwh/issues/new)
 
 ## Contributing
-Please check [this document](https://github.com/maxbanton/cwh/blob/master/CONTRIBUTING.md)
+Please check [this document](https://github.com/phpnexus/cwh/blob/master/CONTRIBUTING.md)
 
 ___
 
