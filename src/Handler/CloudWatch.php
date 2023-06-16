@@ -254,12 +254,7 @@ class CloudWatch extends AbstractProcessingHandler
             ->get('logGroups');
 
         // extract existing groups names
-        $existingGroupsNames = array_map(
-            function ($group) {
-                return $group['logGroupName'];
-            },
-            $existingGroups
-        );
+        $existingGroupsNames = array_column($existingGroups, 'logGroupName');
 
         // create group and set retention policy if not created yet
         if (!in_array($this->group, $existingGroupsNames, true)) {
