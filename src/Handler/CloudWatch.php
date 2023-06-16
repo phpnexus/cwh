@@ -6,7 +6,6 @@ use Aws\CloudWatchLogs\CloudWatchLogsClient;
 use Monolog\Formatter\FormatterInterface;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\AbstractProcessingHandler;
-use Monolog\Logger;
 use Monolog\LogRecord;
 use Monolog\Level;
 

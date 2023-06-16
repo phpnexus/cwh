@@ -7,7 +7,6 @@ use Aws\CloudWatchLogs\Exception\CloudWatchLogsException;
 use Aws\Result;
 use PhpNexus\Cwh\Handler\CloudWatch;
 use Monolog\Formatter\LineFormatter;
-use Monolog\Logger;
 use Monolog\LogRecord;
 use Monolog\Level;
 use PHPUnit\Framework\TestCase;
@@ -39,7 +38,7 @@ class CloudWatchTest extends TestCase
                 ->getMock();
     }
 
-    public function testInitializeWithCreateGroupDisabled()
+    public function testInitializeWithCreateGroupDisabled(): void
     {
         $this
             ->clientMock
@@ -76,7 +75,7 @@ class CloudWatchTest extends TestCase
             14,
             10000,
             [],
-            Logger::DEBUG,
+            Level::Debug,
             true,
             false
         );
@@ -112,7 +111,7 @@ class CloudWatchTest extends TestCase
         $reflectionMethod->invoke($handler);
     }
 
-    public function testInitializeWithExistingLogGroup()
+    public function testInitializeWithExistingLogGroup(): void
     {
         $logGroupsResult = new Result(['logGroups' => [['logGroupName' => $this->groupName]]]);
 
@@ -149,7 +148,7 @@ class CloudWatchTest extends TestCase
         $reflectionMethod->invoke($handler);
     }
 
-    public function testInitializeWithTags()
+    public function testInitializeWithTags(): void
     {
         $tags = [
             'applicationName' => 'dummyApplicationName',
@@ -200,7 +199,7 @@ class CloudWatchTest extends TestCase
         $reflectionMethod->invoke($handler);
     }
 
-    public function testInitializeWithEmptyTags()
+    public function testInitializeWithEmptyTags(): void
     {
         $logGroupsResult = new Result(['logGroups' => [['logGroupName' => $this->groupName . 'foo']]]);
 
@@ -243,7 +242,7 @@ class CloudWatchTest extends TestCase
         $reflectionMethod->invoke($handler);
     }
 
-    public function testInitializeWithMissingGroupAndStream()
+    public function testInitializeWithMissingGroupAndStream(): void
     {
         $logGroupsResult = new Result(['logGroups' => [['logGroupName' => $this->groupName . 'foo']]]);
 
@@ -304,13 +303,13 @@ class CloudWatchTest extends TestCase
         $reflectionMethod->invoke($handler);
     }
 
-    public function testLimitExceeded()
+    public function testLimitExceeded(): void
     {
         $this->expectException(\InvalidArgumentException::class);
         (new CloudWatch($this->clientMock, 'a', 'b', 14, 10001));
     }
 
-    public function testSendsOnClose()
+    public function testSendsOnClose(): void
     {
         $this->prepareMocks();
 
@@ -327,7 +326,7 @@ class CloudWatchTest extends TestCase
         $handler->close();
     }
 
-    public function testSendsBatches()
+    public function testSendsBatches(): void
     {
         $this->prepareMocks();
 
@@ -346,7 +345,7 @@ class CloudWatchTest extends TestCase
         $handler->close();
     }
 
-    public function testFormatter()
+    public function testFormatter(): void
     {
         $handler = $this->getCUT();
 
@@ -357,7 +356,7 @@ class CloudWatchTest extends TestCase
         $this->assertEquals($expected, $formatter);
     }
 
-    public function testExceptionFromDescribeLogGroups()
+    public function testExceptionFromDescribeLogGroups(): void
     {
         // e.g. 'User is not authorized to perform logs:DescribeLogGroups'
         /** @var CloudWatchLogsException */
@@ -384,7 +383,7 @@ class CloudWatchTest extends TestCase
         $handler->handle($this->getRecord(Level::Info));
     }
 
-    private function prepareMocks()
+    private function prepareMocks(): void
     {
         $logGroupsResult = new Result(['logGroups' => [['logGroupName' => $this->groupName]]]);
 
@@ -421,7 +420,7 @@ class CloudWatchTest extends TestCase
                 ->getMock();
     }
 
-    public function testSortsEntriesChronologically()
+    public function testSortsEntriesChronologically(): void
     {
         $this->prepareMocks();
 
@@ -458,7 +457,7 @@ class CloudWatchTest extends TestCase
         $handler->close();
     }
 
-    public function testSendsBatchesSpanning24HoursOrLess()
+    public function testSendsBatchesSpanning24HoursOrLess(): void
     {
         $this->prepareMocks();
 
@@ -505,15 +504,15 @@ class CloudWatchTest extends TestCase
         $handler->close();
     }
 
-    private function getCUT($batchSize = 1000)
+    private function getCUT(int $batchSize = 1000): CloudWatch
     {
         return new CloudWatch($this->clientMock, $this->groupName, $this->streamName, 14, $batchSize);
     }
 
     private function getRecord(
-        Level $level = Level::WARNING,
+        Level $level,
         string $message = 'test',
-        $context = [],
+        array $context = [],
         \DateTimeImmutable $dt = new \DateTimeImmutable()
     ): LogRecord {
         return new LogRecord(
@@ -525,10 +524,7 @@ class CloudWatchTest extends TestCase
         );
     }
 
-    /**
-     * @return array
-     */
-    private function getMultipleRecords()
+    private function getMultipleRecords(): array
     {
         return [
             $this->getRecord(Level::Debug, 'debug message 1'),
