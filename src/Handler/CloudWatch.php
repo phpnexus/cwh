@@ -231,13 +231,7 @@ class CloudWatch extends AbstractProcessingHandler
     {
         // AWS expects to receive entries in chronological order...
         usort($entries, static function (array $a, array $b) {
-            if ($a['timestamp'] < $b['timestamp']) {
-                return -1;
-            } elseif ($a['timestamp'] > $b['timestamp']) {
-                return 1;
-            }
-
-            return 0;
+            return $a['timestamp'] <=> $b['timestamp'];
         });
 
         $data = [
