@@ -254,11 +254,10 @@ class CloudWatch extends AbstractProcessingHandler
     private function initializeGroup(): void
     {
         // fetch existing groups
-        $existingGroups =
-            $this
-                ->client
-                ->describeLogGroups(['logGroupNamePrefix' => $this->group])
-                ->get('logGroups');
+        $existingGroups = $this
+            ->client
+            ->describeLogGroups(['logGroupNamePrefix' => $this->group])
+            ->get('logGroups');
 
         // extract existing groups names
         $existingGroupsNames = array_map(

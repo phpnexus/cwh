@@ -21,21 +21,20 @@ class CloudWatchTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->clientMock =
-            $this
-                ->getMockBuilder(CloudWatchLogsClient::class)
-                ->addMethods(
-                    [
-                        'describeLogGroups',
-                        'CreateLogGroup',
-                        'PutRetentionPolicy',
-                        'DescribeLogStreams',
-                        'CreateLogStream',
-                        'PutLogEvents'
-                    ]
-                )
-                ->disableOriginalConstructor()
-                ->getMock();
+        $this->clientMock = $this
+            ->getMockBuilder(CloudWatchLogsClient::class)
+            ->addMethods(
+                [
+                    'describeLogGroups',
+                    'CreateLogGroup',
+                    'PutRetentionPolicy',
+                    'DescribeLogStreams',
+                    'CreateLogStream',
+                    'PutLogEvents'
+                ]
+            )
+            ->disableOriginalConstructor()
+            ->getMock();
     }
 
     public function testInitializeWithCreateGroupDisabled(): void
@@ -412,12 +411,11 @@ class CloudWatchTest extends TestCase
             ])
             ->willReturn($logStreamResult);
 
-        $this->awsResultMock =
-            $this
-                ->getMockBuilder(Result::class)
-                ->onlyMethods(['get'])
-                ->disableOriginalConstructor()
-                ->getMock();
+        $this->awsResultMock = $this
+            ->getMockBuilder(Result::class)
+            ->onlyMethods(['get'])
+            ->disableOriginalConstructor()
+            ->getMock();
     }
 
     public function testSortsEntriesChronologically(): void
@@ -463,34 +461,34 @@ class CloudWatchTest extends TestCase
 
         $this
             ->clientMock
-                ->expects($this->exactly(3))
-                ->method('PutLogEvents')
-                ->willReturnCallback(function (array $data) {
-                    /** @var int|null */
-                    $earliestTime = null;
+            ->expects($this->exactly(3))
+            ->method('PutLogEvents')
+            ->willReturnCallback(function (array $data) {
+                /** @var int|null */
+                $earliestTime = null;
 
-                    /** @var int|null */
-                    $latestTime = null;
+                /** @var int|null */
+                $latestTime = null;
 
-                    foreach ($data['logEvents'] as $logEvent) {
-                        $logTimestamp = $logEvent['timestamp'];
+                foreach ($data['logEvents'] as $logEvent) {
+                    $logTimestamp = $logEvent['timestamp'];
 
-                        if (!$earliestTime || $logTimestamp < $earliestTime) {
-                            $earliestTime = $logTimestamp;
-                        }
-
-                        if (!$latestTime || $logTimestamp > $latestTime) {
-                            $latestTime = $logTimestamp;
-                        }
+                    if (!$earliestTime || $logTimestamp < $earliestTime) {
+                        $earliestTime = $logTimestamp;
                     }
 
-                    $this->assertNotNull($earliestTime);
-                    $this->assertNotNull($latestTime);
-                    $this->assertGreaterThanOrEqual($earliestTime, $latestTime);
-                    $this->assertLessThanOrEqual(24 * 60 * 60 * 1000, $latestTime - $earliestTime);
+                    if (!$latestTime || $logTimestamp > $latestTime) {
+                        $latestTime = $logTimestamp;
+                    }
+                }
 
-                    return $this->awsResultMock;
-                });
+                $this->assertNotNull($earliestTime);
+                $this->assertNotNull($latestTime);
+                $this->assertGreaterThanOrEqual($earliestTime, $latestTime);
+                $this->assertLessThanOrEqual(24 * 60 * 60 * 1000, $latestTime - $earliestTime);
+
+                return $this->awsResultMock;
+            });
 
         $handler = $this->getCUT();
 
