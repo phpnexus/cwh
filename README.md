@@ -96,78 +96,124 @@ $log->error('Baz');
  [And many others](https://github.com/Seldaek/monolog#framework-integrations)
 
 # AWS IAM needed permissions
-If you prefer to use a separate programmatic IAM user (recommended) or want to define a policy, make sure following permissions are included:
-1. `CreateLogGroup` [aws docs](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_CreateLogGroup.html)
-1. `CreateLogStream` [aws docs](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_CreateLogStream.html)
+If you prefer to use a separate programmatic IAM user (recommended) or want to define a policy, you will need the following permissions depending on your configuration.
+
+Always required:
 1. `PutLogEvents` [aws docs](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutLogEvents.html)
-1. `PutRetentionPolicy` [aws docs](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutRetentionPolicy.html)
-1. `DescribeLogStreams` [aws docs](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_DescribeLogStreams.html)
+
+If `$createGroup` is `true` (default):
 1. `DescribeLogGroups` [aws docs](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_DescribeLogGroups.html)
+1. `CreateLogGroup` [aws docs](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_CreateLogGroup.html)
+1. `PutRetentionPolicy` [aws docs](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutRetentionPolicy.html)
 
-When setting the `$createGroup` argument to `false`, permissions `DescribeLogGroups` and `CreateLogGroup` can be omitted
+If `$createStream` is `true` (default):
+1. `CreateLogStream` [aws docs](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_CreateLogStream.html)
+1. `DescribeLogStreams` [aws docs](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_DescribeLogStreams.html)
 
-## Sample 1: Write to any log stream in a log group
+*Note: The below samples include permissions to create log groups and streams. Remove the "AllowCreateLogGroup" statement when setting the `$createGroup` argument to `false`. Remove the "AllowCreateLogStream" statement when setting the `$createStream` argument to `false`.*
+
+## Sample 1: Write to any log stream in any log group
 This policy example allows writing to any log stream in a log group (named `my-app`). The log streams will be created automatically.
-
-*Note: The first statement allows creation of log groups, and is not required when setting the `$createGroup` argument to `false`.*
 
 ```json
 {
     "Version": "2012-10-17",
     "Statement": [
         {
+            "Sid": "AllowCreateLogGroup",
             "Effect": "Allow",
             "Action": [
                 "logs:CreateLogGroup",
-                "logs:DescribeLogGroups"
+                "logs:DescribeLogGroups",
+                "logs:PutRetentionPolicy"
             ],
             "Resource": "arn:aws:logs:*:*:log-group:*"
         },
         {
+            "Sid": "AllowCreateLogStream",
             "Effect": "Allow",
             "Action": [
                 "logs:CreateLogStream",
-                "logs:DescribeLogStreams",
-                "logs:PutRetentionPolicy",
-                "logs:PutLogEvents"
+                "logs:DescribeLogStreams"
             ],
+            "Resource": "arn:aws:logs:*:*:log-group:*:*"
+        },
+        {
+            "Sid": "AllowPutLogEvents",
+            "Effect": "Allow",
+            "Action": "logs:PutLogEvents",
+            "Resource": "arn:aws:logs:*:*:log-group:*:*"
+        }
+    ]
+}
+```
+
+## Sample 2: Write to any log stream in a log group
+This policy example allows writing to any log stream in a log group (named `my-app`). The log streams will be created automatically.
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowCreateLogGroup",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:DescribeLogGroups",
+                "logs:PutRetentionPolicy"
+            ],
+            "Resource": "arn:aws:logs:*:*:log-group:*"
+        },
+        {
+            "Sid": "AllowCreateLogStream",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogStream",
+                "logs:DescribeLogStreams"
+            ],
+            "Resource": "arn:aws:logs:*:*:log-group:my-app:*"
+        },
+        {
+            "Sid": "AllowPutLogEvents",
+            "Effect": "Allow",
+            "Action": "logs:PutLogEvents",
             "Resource": "arn:aws:logs:*:*:log-group:my-app:*"
         }
     ]
 }
 ```
 
-## Sample 2: Write to specific log streams in a log group
-This policy example allows writing to specific log streams (named `my-stream-1` and `my-stream-2`) in a log group (named `my-app`). The log streams will be created automatically.
-
-*Note: The first statement allows creation of log groups, and is not required when setting the `$createGroup` argument to `false`.*
+## Sample 3: Write to specific log streams in a log group
+This policy example allows writing to specific log streams (named `my-stream-1` and `my-stream-2`) in a log group (named `my-app`).
 
 ```json
 {
     "Version": "2012-10-17",
     "Statement": [
         {
+            "Sid": "AllowCreateLogGroup",
             "Effect": "Allow",
             "Action": [
                 "logs:CreateLogGroup",
-                "logs:DescribeLogGroups"
+                "logs:DescribeLogGroups",
+                "logs:PutRetentionPolicy"
             ],
             "Resource": "arn:aws:logs:*:*:log-group:*"
         },
         {
+            "Sid": "AllowCreateLogStream",
             "Effect": "Allow",
             "Action": [
                 "logs:CreateLogStream",
-                "logs:DescribeLogStreams",
-                "logs:PutRetentionPolicy"
+                "logs:DescribeLogStreams"
             ],
             "Resource": "arn:aws:logs:*:*:log-group:my-app:*"
         },
         {
+            "Sid": "AllowPutLogEvents",
             "Effect": "Allow",
-            "Action": [
-                "logs:PutLogEvents"
-            ],
+            "Action": "logs:PutLogEvents",
             "Resource": [
                 "arn:aws:logs:*:*:log-group:my-app:log-stream:my-stream-1",
                 "arn:aws:logs:*:*:log-group:my-app:log-stream:my-stream-2",
