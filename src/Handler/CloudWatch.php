@@ -32,12 +32,12 @@ class CloudWatch extends AbstractProcessingHandler
     private string $stream;
     private int $retention;
     private bool $initialized = false;
-    private string | null $sequenceToken;
     private int $batchSize;
     /** @var LogRecord[] $buffer */
     private array $buffer = [];
     private array $tags = [];
     private bool $createGroup;
+    private bool $createStream;
 
     /**
      * Data amount limit (http://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutLogEvents.html)
@@ -70,7 +70,8 @@ class CloudWatch extends AbstractProcessingHandler
         array $tags = [],
         int | string | Level $level = Level::Debug,
         bool $bubble = true,
-        bool $createGroup = true
+        bool $createGroup = true,
+        bool $createStream = true
     ) {
         if ($batchSize > 10000) {
             throw new \InvalidArgumentException('Batch size can not be greater than 10000');
@@ -83,6 +84,7 @@ class CloudWatch extends AbstractProcessingHandler
         $this->batchSize = $batchSize;
         $this->tags = $tags;
         $this->createGroup = $createGroup;
+        $this->createStream = $createStream;
 
         parent::__construct($level, $bubble);
 
@@ -126,11 +128,13 @@ class CloudWatch extends AbstractProcessingHandler
                 $this->initialize();
             }
 
-            // send items, retry once with a fresh sequence token
             try {
+                // send items
                 $this->send($this->buffer);
-            } catch (\Aws\CloudWatchLogs\Exception\CloudWatchLogsException $e) {
-                $this->refreshSequenceToken();
+            }
+            catch (\Aws\CloudWatchLogs\Exception\CloudWatchLogsException $e) {
+                // Wait for 1 second and try to send items again (in case of per account per region rate limiting)
+                sleep(1);
                 $this->send($this->buffer);
             }
 
@@ -222,8 +226,7 @@ class CloudWatch extends AbstractProcessingHandler
      *
      * @param LogRecord[] $entries
      *
-     * @throws \Aws\CloudWatchLogs\Exception\CloudWatchLogsException Thrown by putLogEvents for example in case of an
-     *                                                               invalid sequence token
+     * @throws \Aws\CloudWatchLogs\Exception\CloudWatchLogsException Thrown by putLogEvents()
      */
     private function send(array $entries): void
     {
@@ -244,15 +247,9 @@ class CloudWatch extends AbstractProcessingHandler
             'logEvents' => $entries
         ];
 
-        if (!empty($this->sequenceToken)) {
-            $data['sequenceToken'] = $this->sequenceToken;
-        }
-
         $this->checkThrottle();
 
-        $response = $this->client->putLogEvents($data);
-
-        $this->sequenceToken = $response->get('nextSequenceToken');
+        $this->client->putLogEvents($data);
     }
 
     private function initializeGroup(): void
@@ -297,41 +294,21 @@ class CloudWatch extends AbstractProcessingHandler
         }
     }
 
-    private function initialize(): void
-    {
-        if ($this->createGroup) {
-            $this->initializeGroup();
-        }
-
-        $this->refreshSequenceToken();
-    }
-
-    private function refreshSequenceToken(): void
+    private function initializeStream(): void
     {
         // fetch existing streams
-        $existingStreams =
-            $this
-                ->client
-                ->describeLogStreams(
-                    [
-                        'logGroupName' => $this->group,
-                        'logStreamNamePrefix' => $this->stream,
-                    ]
-                )->get('logStreams');
+        $existingStreams = $this
+            ->client
+            ->describeLogStreams(
+                [
+                    'logGroupName' => $this->group,
+                    'logStreamNamePrefix' => $this->stream,
+                ]
+            )
+            ->get('logStreams');
 
         // extract existing streams names
-        $existingStreamsNames = array_map(
-            function ($stream) {
-
-                // set sequence token
-                if ($stream['logStreamName'] === $this->stream && isset($stream['uploadSequenceToken'])) {
-                    $this->sequenceToken = $stream['uploadSequenceToken'];
-                }
-
-                return $stream['logStreamName'];
-            },
-            $existingStreams
-        );
+        $existingStreamsNames = array_column($existingStreams, 'logStreamName');
 
         // create stream if not created
         if (!in_array($this->stream, $existingStreamsNames, true)) {
@@ -343,6 +320,16 @@ class CloudWatch extends AbstractProcessingHandler
                         'logStreamName' => $this->stream
                     ]
                 );
+        }
+    }
+
+    private function initialize(): void
+    {
+        if ($this->createGroup) {
+            $this->initializeGroup();
+        }
+        if ($this->createStream) {
+            $this->initializeStream();
         }
 
         $this->initialized = true;
