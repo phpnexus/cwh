@@ -130,8 +130,7 @@ class CloudWatch extends AbstractProcessingHandler
             try {
                 // send items
                 $this->send($this->buffer);
-            }
-            catch (\Aws\CloudWatchLogs\Exception\CloudWatchLogsException $e) {
+            } catch (\Aws\CloudWatchLogs\Exception\CloudWatchLogsException $e) {
                 // Wait for 1 second and try to send items again (in case of per account per region rate limiting)
                 sleep(1);
                 $this->send($this->buffer);

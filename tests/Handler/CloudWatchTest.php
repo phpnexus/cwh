@@ -102,7 +102,18 @@ class CloudWatchTest extends TestCase
             ->expects($this->never())
             ->method('describeLogStreams');
 
-        $handler = new CloudWatch($this->clientMock, $this->groupName, $this->streamName, 14, 10000, [], Level::Debug, true, false, false);
+        $handler = new CloudWatch(
+            $this->clientMock,
+            $this->groupName,
+            $this->streamName,
+            14,
+            10000,
+            [],
+            Level::Debug,
+            true,
+            false,
+            false
+        );
 
         $reflection = new \ReflectionClass($handler);
         $reflectionMethod = $reflection->getMethod('initialize');
