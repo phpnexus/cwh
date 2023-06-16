@@ -16,6 +16,9 @@
             "homepage": "https://github.com/maxbanton"
         }
     ],
+    "scripts": {
+        "test": "phpunit"
+    },
     "support": {
         "issues": "https://github.com/phpnexus/cwh/issues",
         "source": "https://github.com/phpnexus/cwh"
