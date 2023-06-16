@@ -518,7 +518,7 @@ class CloudWatchTest extends TestCase
         return new LogRecord(
             $dt,
             'test',
-            Level::Debug,
+            $level,
             $message,
             $context
         );
