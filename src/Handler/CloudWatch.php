@@ -12,11 +12,6 @@ use Monolog\Level;
 class CloudWatch extends AbstractProcessingHandler
 {
     /**
-     * Requests per second limit (https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html)
-     */
-    public const RPS_LIMIT = 5;
-
-    /**
      * Event size limit (https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html)
      */
     public const EVENT_SIZE_LIMIT = 262118; // 262144 - reserved 26
@@ -37,14 +32,18 @@ class CloudWatch extends AbstractProcessingHandler
     private array $tags = [];
     private bool $createGroup;
     private bool $createStream;
+    /**
+     * Requests per second limit (https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html)
+     */
+    private int $rpsLimit = 0;     // Default to 0 (disabled)
 
     /**
      * Data amount limit (http://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutLogEvents.html)
      */
     private int $dataAmountLimit = 1048576;
     private int $currentDataAmount = 0;
-    private int $remainingRequests = self::RPS_LIMIT;
-    private \DateTime $savedTime;
+    private int $remainingRequests;
+    private \DateTimeImmutable $savedTime;
     private int | null $earliestTimestamp = null;
 
     /**
@@ -70,7 +69,8 @@ class CloudWatch extends AbstractProcessingHandler
         int | string | Level $level = Level::Debug,
         bool $bubble = true,
         bool $createGroup = true,
-        bool $createStream = true
+        bool $createStream = true,
+        int $rpsLimit = 0
     ) {
         if ($batchSize > 10000) {
             throw new \InvalidArgumentException('Batch size can not be greater than 10000');
@@ -84,10 +84,13 @@ class CloudWatch extends AbstractProcessingHandler
         $this->tags = $tags;
         $this->createGroup = $createGroup;
         $this->createStream = $createStream;
+        $this->rpsLimit = $rpsLimit;
 
         parent::__construct($level, $bubble);
 
-        $this->savedTime = new \DateTime();
+        // Initalize remaining requests and saved time for rate limiting
+        $this->remainingRequests = $this->rpsLimit;
+        $this->savedTime = new \DateTimeImmutable();
     }
 
     protected function write(LogRecord $record): void
@@ -131,7 +134,9 @@ class CloudWatch extends AbstractProcessingHandler
                 // send items
                 $this->send($this->buffer);
             } catch (\Aws\CloudWatchLogs\Exception\CloudWatchLogsException $e) {
-                // Wait for 1 second and try to send items again (in case of per account per region rate limiting)
+                error_log('AWS CloudWatchLogs threw an exception while sending items: ' . $e->getMessage());
+
+                // wait for 1 second and try to send items again (in case of per account per region rate limiting)
                 sleep(1);
                 $this->send($this->buffer);
             }
@@ -149,20 +154,24 @@ class CloudWatch extends AbstractProcessingHandler
 
     private function checkThrottle(): void
     {
-        $current = new \DateTime();
-        $diff = $current->diff($this->savedTime)->s;
-        $sameSecond = $diff === 0;
+        if ($this->rpsLimit > 0) {
+            $current = new \DateTimeImmutable();
+            $diff = $current->diff($this->savedTime)->s;
+            $sameSecond = $diff === 0;
 
-        if ($sameSecond && $this->remainingRequests > 0) {
-            $this->remainingRequests--;
-        } elseif ($sameSecond && $this->remainingRequests === 0) {
-            sleep(1);
-            $this->remainingRequests = self::RPS_LIMIT;
-        } elseif (!$sameSecond) {
-            $this->remainingRequests = self::RPS_LIMIT;
+            if ($sameSecond && $this->remainingRequests > 0) {
+                $this->remainingRequests--;
+            } elseif ($sameSecond && $this->remainingRequests === 0) {
+                // Sleep for 1 second and reset remaining requests
+                sleep(1);
+                $this->remainingRequests = $this->rpsLimit;
+            } elseif (!$sameSecond) {
+                // Reset remaining requests
+                $this->remainingRequests = $this->rpsLimit;
+            }
+
+            $this->savedTime = new \DateTimeImmutable();
         }
-
-        $this->savedTime = new \DateTime();
     }
 
     /**
