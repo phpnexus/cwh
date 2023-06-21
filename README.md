@@ -29,6 +29,7 @@ This library uses AWS API through AWS PHP SDK, which has limits on concurrent re
 * Log Groups creating with tags
 * AWS CloudWatch Logs staff lazy loading
 * Suitable for web applications and for long-living CLI daemons and workers
+* **New!** Configurable rate limit, useful with small batch sizes on long-living CLI daemons and workers
 
 ## Installation
 Install the latest version with [Composer](https://getcomposer.org/) by running
@@ -87,6 +88,118 @@ $log->warning('Bar');
 $log->error('Baz');
 ```
 
+## Advanced Usage
+### Prevent automatic creation of log groups and streams
+The default behavior is to check if the destination log group and log stream exists and create the log group and log stream if necessary.
+
+This activity always sends a `DescribeLogGroups` and `DescribeLogStreams` API call to AWS, and will send a `CreateLogGroup` API call or `CreateLogStream` API call to AWS if the log group or log stream doesn't exist.
+
+AWS have a default quota of [5 requests per second](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html) for both `DescribeLogGroups` and `DescribeLogStreams` per region per account, which will become a bottleneck even in medium traffic environments.
+
+By setting `$createGroup` and `$createStream` to `false`, this library will not automatically create the destination log group or log stream, and hence will not send any `DescribeLogGroups` or `DescribeLogStreams` API calls to AWS.
+
+```php
+<?php
+
+use Aws\CloudWatchLogs\CloudWatchLogsClient;
+use Monolog\Logger;
+use Monolog\Level;
+use Monolog\Formatter\JsonFormatter;
+use PhpNexus\Cwh\Handler\CloudWatch;
+
+$sdkParams = [
+    'region' => 'ap-northeast-1',
+    'version' => 'latest',
+    'credentials' => [
+        'key' => 'your AWS key',
+        'secret' => 'your AWS secret',
+        'token' => 'your AWS session token', // token is optional
+    ]
+];
+
+// Instantiate AWS SDK CloudWatch Logs Client
+$client = new CloudWatchLogsClient($sdkParams);
+
+// Log group name (must exist already)
+$groupName = 'php-logtest';
+
+// Log stream name (must exist already)
+$streamName = 'ec2-instance-1';
+
+// Instantiate handler
+$handler = new CloudWatch($client, $groupName, $streamName, level: Level::Info, createGroup: false, createStream: false);
+
+// Optionally set the JsonFormatter to be able to access your log messages in a structured way
+$handler->setFormatter(new JsonFormatter());
+
+// Create a log channel
+$log = new Logger('name');
+
+// Set handler
+$log->pushHandler($handler);
+
+// Add records to the log
+$log->debug('Foo');
+$log->warning('Bar');
+$log->error('Baz');
+```
+
+### **New!** Rate limiting
+The default behavior is to send logs in batches of 10000, or when the script terminates. This is appropriate for short-lived requests, but not for long-lived CLI daemons and workers.
+
+For these cases, a smaller `$batchSize` of 1 would be more appropriate. However, with a smaller batch size the number of `putLogEvents` requests to AWS will increase and may reach the [per account per region limit](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html).
+
+To help avoid this rate limit, use the `$rpsLimit` option to limit the number of requests per second that your CLI daemon or worker can send.
+
+*Note: This limit is only applicable for one instance of a CLI daemon or worker. With multiple instances, adjust the `$rpsLimit` accordingly.*
+
+```php
+<?php
+
+use Aws\CloudWatchLogs\CloudWatchLogsClient;
+use Monolog\Logger;
+use Monolog\Level;
+use Monolog\Formatter\JsonFormatter;
+use PhpNexus\Cwh\Handler\CloudWatch;
+
+$sdkParams = [
+    'region' => 'ap-northeast-1',
+    'version' => 'latest',
+    'credentials' => [
+        'key' => 'your AWS key',
+        'secret' => 'your AWS secret',
+        'token' => 'your AWS session token', // token is optional
+    ]
+];
+
+// Instantiate AWS SDK CloudWatch Logs Client
+$client = new CloudWatchLogsClient($sdkParams);
+
+// Log group name, will be created if none
+$groupName = 'php-logtest';
+
+// Log stream name, will be created if none
+$streamName = 'cli-worker';
+
+// Instantiate handler
+$handler = new CloudWatch($client, $groupName, $streamName, batchSize: 1, level: Level::Info, rpsLimit: 100);
+
+// Optionally set the JsonFormatter to be able to access your log messages in a structured way
+$handler->setFormatter(new JsonFormatter());
+
+// Create a log channel
+$log = new Logger('name');
+
+// Set handler
+$log->pushHandler($handler);
+
+// Add lots of records to the log very quickly
+$i = 0;
+do {
+    $log->info('Foo');
+} while ($i++ < 500);
+```
+
 ## Frameworks integration
  - [Silex](http://silex.sensiolabs.org/doc/master/providers/monolog.html#customization)
  - [Symfony](http://symfony.com/doc/current/logging.html) ([Example](https://github.com/maxbanton/cwh/issues/10#issuecomment-296173601))
@@ -95,7 +208,7 @@ $log->error('Baz');
 
  [And many others](https://github.com/Seldaek/monolog#framework-integrations)
 
-# AWS IAM needed permissions
+## AWS IAM needed permissions
 If you prefer to use a separate programmatic IAM user (recommended) or want to define a policy, you will need the following permissions depending on your configuration.
 
 Always required:
