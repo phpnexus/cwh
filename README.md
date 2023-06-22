@@ -225,7 +225,7 @@ If `$createStream` is `true` (default):
 
 *Note: The below samples include permissions to create log groups and streams. Remove the "AllowCreateLogGroup" statement when setting the `$createGroup` argument to `false`. Remove the "AllowCreateLogStream" statement when setting the `$createStream` argument to `false`.*
 
-## Sample 1: Write to any log stream in any log group
+### Sample 1: Write to any log stream in any log group
 This policy example allows writing to any log stream in a log group (named `my-app`). The log streams will be created automatically.
 
 ```json
@@ -261,7 +261,7 @@ This policy example allows writing to any log stream in a log group (named `my-a
 }
 ```
 
-## Sample 2: Write to any log stream in a log group
+### Sample 2: Write to any log stream in a log group
 This policy example allows writing to any log stream in a log group (named `my-app`). The log streams will be created automatically.
 
 ```json
@@ -297,7 +297,7 @@ This policy example allows writing to any log stream in a log group (named `my-a
 }
 ```
 
-## Sample 3: Write to specific log streams in a log group
+### Sample 3: Write to specific log streams in a log group
 This policy example allows writing to specific log streams (named `my-stream-1` and `my-stream-2`) in a log group (named `my-app`).
 
 ```json
