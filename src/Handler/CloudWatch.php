@@ -134,7 +134,7 @@ class CloudWatch extends AbstractProcessingHandler
                 // send items
                 $this->send($this->buffer);
             } catch (\Aws\CloudWatchLogs\Exception\CloudWatchLogsException $e) {
-                error_log('AWS CloudWatchLogs threw an exception while sending items: ' . $e->getMessage());
+                $this->initializeStream();
 
                 // wait for 1 second and try to send items again (in case of per account per region rate limiting)
                 sleep(1);
