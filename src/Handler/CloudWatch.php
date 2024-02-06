@@ -24,7 +24,7 @@ class CloudWatch extends AbstractProcessingHandler
     private CloudWatchLogsClient $client;
     private string $group;
     private string $stream;
-    private int $retention;
+    private int | null $retention;
     private bool $initialized = false;
     private int $batchSize;
     /** @var LogRecord[] $buffer */
@@ -63,7 +63,7 @@ class CloudWatch extends AbstractProcessingHandler
         CloudWatchLogsClient $client,
         string $group,
         string $stream,
-        int $retention = 14,
+        int | null $retention = 14,
         int $batchSize = 10000,
         array $tags = [],
         int | string | Level $level = Level::Debug,
