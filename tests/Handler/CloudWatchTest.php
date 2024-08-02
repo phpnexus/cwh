@@ -355,6 +355,53 @@ class CloudWatchTest extends TestCase
         $handler->close();
     }
 
+    public function testSendWithRPSLimit(): void
+    {
+        $this->prepareMocks();
+
+        $this
+            ->clientMock
+            ->expects($this->exactly(3))
+            ->method('PutLogEvents')
+            ->willReturnCallback(function (array $data) {
+                $this->assertStringContainsString('record', $data['logEvents'][0]['message']);
+
+                return $this->awsResultMock;
+            });
+
+        $handler = new CloudWatch(
+            $this->clientMock,
+            $this->groupName,
+            $this->streamName,
+            14,
+            1,
+            [],
+            Level::Debug,
+            true,
+            true,
+            true,
+            1
+        );
+
+        $reflection = new \ReflectionClass($handler);
+        $savedTime = $reflection->getProperty('savedTime');
+        $savedTime->setValue($handler, new \DateTimeImmutable());
+
+        $reflectionMethod = $reflection->getMethod('initialize');
+        $reflectionMethod->setAccessible(true);
+        $reflectionMethod->invoke($handler);
+
+        // Initial log entry
+        $handler->handle($this->getRecord(Level::Debug, 'record'));
+
+        // Another log entry immediately after
+        $handler->handle($this->getRecord(Level::Debug, 'record'));
+
+        // Final log entry 1 second later
+        sleep(1);
+        $handler->handle($this->getRecord(Level::Debug, 'record'));
+    }
+
     public function testFormatter(): void
     {
         $handler = $this->getCUT();
