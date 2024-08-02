@@ -89,8 +89,7 @@ class CloudWatch extends AbstractProcessingHandler
         parent::__construct($level, $bubble);
 
         // Initalize remaining requests and saved time for rate limiting
-        $this->remainingRequests = $this->rpsLimit;
-        $this->savedTime = new \DateTimeImmutable();
+        $this->resetRemainingRequests();
     }
 
     protected function write(LogRecord $record): void
@@ -162,16 +161,19 @@ class CloudWatch extends AbstractProcessingHandler
             if ($sameSecond && $this->remainingRequests > 0) {
                 $this->remainingRequests--;
             } elseif ($sameSecond && $this->remainingRequests === 0) {
-                // Sleep for 1 second and reset remaining requests
+                // Sleep for 1 second to throttle requests
                 sleep(1);
-                $this->remainingRequests = $this->rpsLimit;
+                $this->resetRemainingRequests();
             } elseif (!$sameSecond) {
-                // Reset remaining requests
-                $this->remainingRequests = $this->rpsLimit;
+                $this->resetRemainingRequests();
             }
-
-            $this->savedTime = new \DateTimeImmutable();
         }
+    }
+
+    private function resetRemainingRequests()
+    {
+        $this->remainingRequests = $this->rpsLimit;
+        $this->savedTime = new \DateTimeImmutable();
     }
 
     /**
