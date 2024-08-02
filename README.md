@@ -94,7 +94,7 @@ The default behavior is to check if the destination log group and log stream exi
 
 This activity always sends a `DescribeLogGroups` and `DescribeLogStreams` API call to AWS, and will send a `CreateLogGroup` API call or `CreateLogStream` API call to AWS if the log group or log stream doesn't exist.
 
-AWS have a default quota of [5 requests per second](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html) for both `DescribeLogGroups` and `DescribeLogStreams` per region per account, which will become a bottleneck even in medium traffic environments.
+AWS have a default quota of [10 requests per second](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html) for `DescribeLogGroups` and [25 requests per second](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html) `DescribeLogStreams` per region per account, which will become a bottleneck even in medium traffic environments.
 
 By setting `$createGroup` and `$createStream` to `false`, this library will not automatically create the destination log group or log stream, and hence will not send any `DescribeLogGroups` or `DescribeLogStreams` API calls to AWS.
 
