@@ -26,27 +26,34 @@ class CloudWatch extends AbstractProcessingHandler
      */
     public const TIMESPAN_LIMIT = 86400000;
 
-    private CloudWatchLogsClient $client;
-    private string $group;
-    private string $stream;
-    private int | null $retention;
-    private bool $initialized = false;
-    private int $batchSize;
-    /** @var LogRecord[] $buffer */
-    private array $buffer = [];
-    private array $tags = [];
-    private bool $createGroup;
-    private bool $createStream;
+    private readonly CloudWatchLogsClient $client;
+
+    private readonly string $group;
+
+    private readonly string $stream;
+
+    private readonly int | null $retention;
+
+    private readonly int $batchSize;
+
+    private readonly array $tags;
+
+    private readonly bool $createGroup;
+
+    private readonly bool $createStream;
+
     /**
      * Requests per second limit (https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html)
      */
-    private int $rpsLimit = 0;     // Default to 0 (disabled)
+    private readonly int $rpsLimit;
 
-    /**
-     * Data amount limit (http://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutLogEvents.html)
-     */
-    private int $dataAmountLimit = 1048576;
+    private bool $initialized = false;
+
+    /** @var LogRecord[] $buffer */
+    private array $buffer = [];
+
     private int $currentDataAmount = 0;
+
     private int $remainingRequests;
     private \DateTimeImmutable $savedTime;
     private int | null $earliestTimestamp = null;
