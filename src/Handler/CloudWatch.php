@@ -17,6 +17,11 @@ class CloudWatch extends AbstractProcessingHandler
     public const EVENT_SIZE_LIMIT = 1048550; // 1048576 - reserved 26
 
     /**
+     * Data amount limit (http://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutLogEvents.html)
+     */
+    private const DATA_AMOUNT_LIMIT = 1048576;
+
+    /**
      * The batch of log events in a single PutLogEvents request cannot span more than 24 hours.
      */
     public const TIMESPAN_LIMIT = 86400000;
@@ -188,7 +193,7 @@ class CloudWatch extends AbstractProcessingHandler
      */
     protected function willMessageSizeExceedLimit(array $record): bool
     {
-        return $this->currentDataAmount + $this->getMessageSize($record) >= $this->dataAmountLimit;
+        return $this->currentDataAmount + $this->getMessageSize($record) >= self::DATA_AMOUNT_LIMIT;
     }
 
     /**
