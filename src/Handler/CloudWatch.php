@@ -77,8 +77,13 @@ class CloudWatch extends AbstractProcessingHandler
         bool $createStream = true,
         int $rpsLimit = 0
     ) {
+        // Assert batch size is not above 10,000
         if ($batchSize > 10000) {
             throw new \InvalidArgumentException('Batch size can not be greater than 10000');
+        }
+        // Assert RPS limit is not a negative number
+        if ($rpsLimit < 0) {
+            throw new \InvalidArgumentException('RPS limit can not be a negative number');
         }
 
         $this->client = $client;

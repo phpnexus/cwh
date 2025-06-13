@@ -313,10 +313,16 @@ class CloudWatchTest extends TestCase
         $reflectionMethod->invoke($handler);
     }
 
-    public function testLimitExceeded(): void
+    public function testBatchSizeLimitExceeded(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        (new CloudWatch($this->clientMock, 'a', 'b', 14, 10001));
+        (new CloudWatch($this->clientMock, 'a', 'b', batchSize: 10001));
+    }
+
+    public function testInvalidRpsLimit(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        (new CloudWatch($this->clientMock, 'a', 'b', rpsLimit: -1));
     }
 
     public function testSendsOnClose(): void
