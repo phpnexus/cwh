@@ -55,7 +55,9 @@ class CloudWatch extends AbstractProcessingHandler
     private int $currentDataAmount = 0;
 
     private int $remainingRequests;
-    private \DateTimeImmutable $savedTime;
+
+    private \DateTimeImmutable $rpsTimestamp;
+
     private int | null $earliestTimestamp = null;
 
     /**
@@ -105,9 +107,9 @@ class CloudWatch extends AbstractProcessingHandler
 
         parent::__construct($level, $bubble);
 
-        // Initalize remaining requests and saved time for rate limiting
+        // Initalize remaining requests and rps timestamp for rate limiting
         $this->remainingRequests = $this->rpsLimit;
-        $this->savedTime = new \DateTimeImmutable();
+        $this->rpsTimestamp = new \DateTimeImmutable();
     }
 
     protected function write(LogRecord $record): void
@@ -173,7 +175,7 @@ class CloudWatch extends AbstractProcessingHandler
     {
         if ($this->rpsLimit > 0) {
             $current = new \DateTimeImmutable();
-            $diff = $current->diff($this->savedTime)->s;
+            $diff = $current->diff($this->rpsTimestamp)->s;
             $sameSecond = $diff === 0;
 
             if ($sameSecond && $this->remainingRequests > 0) {
@@ -187,7 +189,7 @@ class CloudWatch extends AbstractProcessingHandler
                 $this->remainingRequests = $this->rpsLimit;
             }
 
-            $this->savedTime = new \DateTimeImmutable();
+            $this->rpsTimestamp = new \DateTimeImmutable();
         }
     }
 
