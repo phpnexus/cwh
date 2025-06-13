@@ -56,7 +56,7 @@ class CloudWatch extends AbstractProcessingHandler
 
     private int $remainingRequests;
 
-    private \DateTimeImmutable $rpsTimestamp;
+    private readonly \DateTime $rpsTimestamp;
 
     private int | null $earliestTimestamp = null;
 
@@ -122,8 +122,9 @@ class CloudWatch extends AbstractProcessingHandler
 
         parent::__construct($level, $bubble);
 
-        // Initalize remaining requests and saved time for rate limiting
+        // Initalize remaining requests and RPS timestamp for rate limiting
         $this->resetRemainingRequests();
+        $this->rpsTimestamp = new \DateTime();
     }
 
     protected function write(LogRecord $record): void
@@ -188,40 +189,33 @@ class CloudWatch extends AbstractProcessingHandler
     private function checkThrottle(): void
     {
         if ($this->rpsLimit > 0) {
-            $current = new \DateTimeImmutable();
-            $diff = $current->diff($this->rpsTimestamp)->s;
+            // Calculate number of seconds between now and last RPS timestamp
+            $diff = $this->rpsTimestamp->diff(new \DateTimeImmutable)->s;
             $sameSecond = $diff === 0;
 
-            if ($sameSecond && $this->remainingRequests > 0) {
-                $this->decrementRemainingRequests();
-            } elseif ($sameSecond && $this->remainingRequests === 0) {
-                // Sleep for 1 second to throttle requests
-                sleep(1);
-                $this->resetRemainingRequests();
-            } elseif (!$sameSecond) {
+            if ($sameSecond) {
+                // If no remaining requests for current second
+                if ($this->remainingRequests === 0) {
+                    // Sleep and reset remaining requests
+                    sleep(1);
+                    $this->resetRemainingRequests();
+                }
+            } else {
+                // Different second, reset remaining requests
                 $this->resetRemainingRequests();
             }
+
+            // Decrement remaining requests
+            $this->remainingRequests--;
+
+            // Update RPS timestamp to current time
+            $this->rpsTimestamp->setTimestamp(time());
         }
     }
 
-    /**
-     * Decrement number of remaining requests, and update saved time (timestamp that
-     * the remaining requests count is applicable for)
-     */
-    private function decrementRemainingRequests(): void
-    {
-        $this->remainingRequests--;
-        $this->rpsTimestamp = new \DateTimeImmutable();
-    }
-
-    /**
-     * Reset remaining requests to RPS limit, and update saved time (timestamp that
-     * the remaining requests count is applicable for)
-     */
     private function resetRemainingRequests(): void
     {
         $this->remainingRequests = $this->rpsLimit;
-        $this->rpsTimestamp = new \DateTimeImmutable();
     }
 
     /**
