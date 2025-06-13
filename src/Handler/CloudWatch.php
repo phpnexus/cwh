@@ -71,6 +71,18 @@ class CloudWatch extends AbstractProcessingHandler
      *  Log stream names must be unique within the log group.
      *  Log stream names can be between 1 and 512 characters long.
      *  The ':' (colon) and '*' (asterisk) characters are not allowed.
+     *
+     * @param CloudWatchLogsClient $client AWS SDK CloudWatchLogs client to use with this handler.
+     * @param string $group Name of log group.
+     * @param string $stream Name of log stream within log group.
+     * @param int | null $retention Number of days to retain logs (optional). Only used when CloudWatch handler creates log group. Defaults to 14.
+     * @param int $batchSize Number of logs to queue in memory before sending to CloudWatch (optional). Defaults to 10000.
+     * @param array $tags Tags to apply to log group (optional). Only used when CloudWatch handler creates log group.
+     * @param int | string | Monolog\Level $level The minimum logging level at which this handler will be triggered (optional). Defaults to `Monolog\Level::DEBUG`.
+     * @param bool $bubble Whether the messages that are handled can bubble up the stack or not (optional). Defaults to `true`.
+     * @param bool $createGroup Whether to create log group if log group does not exist (optional). Defaults to `true`.
+     * @param bool $createStream Whether to create log stream if log stream does not exist in log group (optional). Defaults to `true`.
+     * @param int $rpsLimit Number of requests per second before a 1 second sleep is triggered (optional). Defaults to 0 (0 = disabled).
      * @throws \Exception
      */
     public function __construct(
@@ -179,18 +191,35 @@ class CloudWatch extends AbstractProcessingHandler
             $sameSecond = $diff === 0;
 
             if ($sameSecond && $this->remainingRequests > 0) {
-                $this->remainingRequests--;
+                $this->decrementRemainingRequests();
             } elseif ($sameSecond && $this->remainingRequests === 0) {
                 // Sleep for 1 second and reset remaining requests
                 sleep(1);
-                $this->remainingRequests = $this->rpsLimit;
+                $this->resetRemainingRequests();
             } elseif (!$sameSecond) {
-                // Reset remaining requests
-                $this->remainingRequests = $this->rpsLimit;
+                $this->resetRemainingRequests();
             }
-
-            $this->rpsTimestamp = new \DateTimeImmutable();
         }
+    }
+
+    /**
+     * Decrement number of remaining requests, and update saved time (timestamp that
+     * the remaining requests count is applicable for)
+     */
+    private function decrementRemainingRequests(): void
+    {
+        $this->remainingRequests--;
+        $this->rpsTimestamp = new \DateTimeImmutable();
+    }
+
+    /**
+     * Reset remaining requests to RPS limit, and update saved time (timestamp that
+     * the remaining requests count is applicable for)
+     */
+    private function resetRemainingRequests(): void
+    {
+        $this->remainingRequests = $this->rpsLimit;
+        $this->rpsTimestamp = new \DateTimeImmutable();
     }
 
     /**
