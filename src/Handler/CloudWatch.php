@@ -14,36 +14,50 @@ class CloudWatch extends AbstractProcessingHandler
     /**
      * Event size limit (https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html)
      */
-    public const EVENT_SIZE_LIMIT = 262118; // 262144 - reserved 26
+    public const EVENT_SIZE_LIMIT = 1048550; // 1048576 - reserved 26
+
+    /**
+     * Data amount limit (http://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutLogEvents.html)
+     */
+    private const DATA_AMOUNT_LIMIT = 1048576;
 
     /**
      * The batch of log events in a single PutLogEvents request cannot span more than 24 hours.
      */
     public const TIMESPAN_LIMIT = 86400000;
 
-    private CloudWatchLogsClient $client;
-    private string $group;
-    private string $stream;
-    private int | null $retention;
-    private bool $initialized = false;
-    private int $batchSize;
-    /** @var LogRecord[] $buffer */
-    private array $buffer = [];
-    private array $tags = [];
-    private bool $createGroup;
-    private bool $createStream;
+    private readonly CloudWatchLogsClient $client;
+
+    private readonly string $group;
+
+    private readonly string $stream;
+
+    private readonly int | null $retention;
+
+    private readonly int $batchSize;
+
+    private readonly array $tags;
+
+    private readonly bool $createGroup;
+
+    private readonly bool $createStream;
+
     /**
      * Requests per second limit (https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html)
      */
-    private int $rpsLimit = 0;     // Default to 0 (disabled)
+    private readonly int $rpsLimit;
 
-    /**
-     * Data amount limit (http://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutLogEvents.html)
-     */
-    private int $dataAmountLimit = 1048576;
+    private bool $initialized = false;
+
+    /** @var LogRecord[] $buffer */
+    private array $buffer = [];
+
     private int $currentDataAmount = 0;
+
     private int $remainingRequests;
-    private \DateTimeImmutable $savedTime;
+
+    private \DateTimeImmutable $rpsTimestamp;
+
     private int | null $earliestTimestamp = null;
 
     /**
@@ -57,6 +71,21 @@ class CloudWatch extends AbstractProcessingHandler
      *  Log stream names must be unique within the log group.
      *  Log stream names can be between 1 and 512 characters long.
      *  The ':' (colon) and '*' (asterisk) characters are not allowed.
+     *
+     * @param CloudWatchLogsClient $client AWS SDK CloudWatchLogs client to use with this handler.
+     * @param string $group Name of log group.
+     * @param string $stream Name of log stream within log group.
+     * @param int|null $retention (Optional) Number of days to retain log entries.
+     *                            Only used when CloudWatch handler creates log group.
+     * @param int $batchSize (Optional) Number of logs to queue before sending to CloudWatch.
+     * @param array $tags (Optional) Tags to apply to log group. Only used when CloudWatch handler creates log group.
+     * @param int|string|Monolog\Level $level (Optional) The minimum logging level at which this handler will be
+     *                                        triggered.
+     * @param bool $bubble (Optional) Whether the messages that are handled can bubble up the stack or not.
+     * @param bool $createGroup (Optional) Whether to create log group if log group does not exist.
+     * @param bool $createStream (Optional) Whether to create log stream if log stream does not exist in log group.
+     * @param int $rpsLimit (Optional) Number of requests per second before a 1 second sleep is triggered.
+     *                      Set to 0 to disable.
      * @throws \Exception
      */
     public function __construct(
@@ -72,8 +101,13 @@ class CloudWatch extends AbstractProcessingHandler
         bool $createStream = true,
         int $rpsLimit = 0
     ) {
+        // Assert batch size is not above 10,000
         if ($batchSize > 10000) {
             throw new \InvalidArgumentException('Batch size can not be greater than 10000');
+        }
+        // Assert RPS limit is not a negative number
+        if ($rpsLimit < 0) {
+            throw new \InvalidArgumentException('RPS limit can not be a negative number');
         }
 
         $this->client = $client;
@@ -155,11 +189,11 @@ class CloudWatch extends AbstractProcessingHandler
     {
         if ($this->rpsLimit > 0) {
             $current = new \DateTimeImmutable();
-            $diff = $current->diff($this->savedTime)->s;
+            $diff = $current->diff($this->rpsTimestamp)->s;
             $sameSecond = $diff === 0;
 
             if ($sameSecond && $this->remainingRequests > 0) {
-                $this->remainingRequests--;
+                $this->decrementRemainingRequests();
             } elseif ($sameSecond && $this->remainingRequests === 0) {
                 // Sleep for 1 second to throttle requests
                 sleep(1);
@@ -170,10 +204,24 @@ class CloudWatch extends AbstractProcessingHandler
         }
     }
 
-    private function resetRemainingRequests()
+    /**
+     * Decrement number of remaining requests, and update saved time (timestamp that
+     * the remaining requests count is applicable for)
+     */
+    private function decrementRemainingRequests(): void
+    {
+        $this->remainingRequests--;
+        $this->rpsTimestamp = new \DateTimeImmutable();
+    }
+
+    /**
+     * Reset remaining requests to RPS limit, and update saved time (timestamp that
+     * the remaining requests count is applicable for)
+     */
+    private function resetRemainingRequests(): void
     {
         $this->remainingRequests = $this->rpsLimit;
-        $this->savedTime = new \DateTimeImmutable();
+        $this->rpsTimestamp = new \DateTimeImmutable();
     }
 
     /**
@@ -190,7 +238,7 @@ class CloudWatch extends AbstractProcessingHandler
      */
     protected function willMessageSizeExceedLimit(array $record): bool
     {
-        return $this->currentDataAmount + $this->getMessageSize($record) >= $this->dataAmountLimit;
+        return $this->currentDataAmount + $this->getMessageSize($record) >= self::DATA_AMOUNT_LIMIT;
     }
 
     /**
@@ -203,7 +251,7 @@ class CloudWatch extends AbstractProcessingHandler
     }
 
     /**
-     * Event size in the batch can not be bigger than 256 KB
+     * Event size in the batch can not be bigger than 1 MB
      * https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html
      */
     private function formatRecords(LogRecord $entry): array
