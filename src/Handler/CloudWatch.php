@@ -190,7 +190,7 @@ class CloudWatch extends AbstractProcessingHandler
     {
         if ($this->rpsLimit > 0) {
             // Calculate number of seconds between now and last RPS timestamp
-            $diff = $this->rpsTimestamp->diff(new \DateTimeImmutable)->s;
+            $diff = $this->rpsTimestamp->diff(new \DateTimeImmutable())->s;
             $sameSecond = $diff === 0;
 
             if ($sameSecond) {
