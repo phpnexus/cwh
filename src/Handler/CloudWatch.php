@@ -201,7 +201,7 @@ class CloudWatch extends AbstractProcessingHandler
     }
 
     /**
-     * Event size in the batch can not be bigger than 256 KB
+     * Event size in the batch can not be bigger than 1 MB
      * https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html
      */
     private function formatRecords(LogRecord $entry): array
