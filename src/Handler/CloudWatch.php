@@ -75,14 +75,17 @@ class CloudWatch extends AbstractProcessingHandler
      * @param CloudWatchLogsClient $client AWS SDK CloudWatchLogs client to use with this handler.
      * @param string $group Name of log group.
      * @param string $stream Name of log stream within log group.
-     * @param int | null $retention Number of days to retain logs (optional). Only used when CloudWatch handler creates log group. Defaults to 14.
-     * @param int $batchSize Number of logs to queue in memory before sending to CloudWatch (optional). Defaults to 10000.
-     * @param array $tags Tags to apply to log group (optional). Only used when CloudWatch handler creates log group.
-     * @param int | string | Monolog\Level $level The minimum logging level at which this handler will be triggered (optional). Defaults to `Monolog\Level::DEBUG`.
-     * @param bool $bubble Whether the messages that are handled can bubble up the stack or not (optional). Defaults to `true`.
-     * @param bool $createGroup Whether to create log group if log group does not exist (optional). Defaults to `true`.
-     * @param bool $createStream Whether to create log stream if log stream does not exist in log group (optional). Defaults to `true`.
-     * @param int $rpsLimit Number of requests per second before a 1 second sleep is triggered (optional). Defaults to 0 (0 = disabled).
+     * @param int|null $retention (Optional) Number of days to retain log entries.
+     *                            Only used when CloudWatch handler creates log group.
+     * @param int $batchSize (Optional) Number of logs to queue before sending to CloudWatch.
+     * @param array $tags (Optional) Tags to apply to log group. Only used when CloudWatch handler creates log group.
+     * @param int|string|Monolog\Level $level (Optional) The minimum logging level at which this handler will be
+     *                                        triggered.
+     * @param bool $bubble (Optional) Whether the messages that are handled can bubble up the stack or not.
+     * @param bool $createGroup (Optional) Whether to create log group if log group does not exist.
+     * @param bool $createStream (Optional) Whether to create log stream if log stream does not exist in log group.
+     * @param int $rpsLimit (Optional) Number of requests per second before a 1 second sleep is triggered.
+     *                      Set to 0 to disable.
      * @throws \Exception
      */
     public function __construct(
