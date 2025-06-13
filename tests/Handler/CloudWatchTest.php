@@ -367,7 +367,7 @@ class CloudWatchTest extends TestCase
 
         $this
             ->clientMock
-            ->expects($this->exactly(3))
+            ->expects($this->exactly(4))
             ->method('PutLogEvents')
             ->willReturnCallback(function (array $data) {
                 $this->assertStringContainsString('record', $data['logEvents'][0]['message']);
@@ -386,26 +386,40 @@ class CloudWatchTest extends TestCase
             true,
             true,
             true,
-            1
+            2
         );
 
+        // Get access to remainingRequests property
         $reflection = new \ReflectionClass($handler);
-        $savedTime = $reflection->getProperty('savedTime');
-        $savedTime->setValue($handler, new \DateTimeImmutable());
-
-        $reflectionMethod = $reflection->getMethod('initialize');
-        $reflectionMethod->setAccessible(true);
-        $reflectionMethod->invoke($handler);
+        $remainingRequestsProperty = $reflection->getProperty('remainingRequests');
+        $remainingRequestsProperty->setAccessible(true);
 
         // Initial log entry
         $handler->handle($this->getRecord(Level::Debug, 'record'));
 
-        // Another log entry immediately after
+        // Ensure remainingRequests was decremented to 1 after initial log entry
+        $this->assertEquals(1, $remainingRequestsProperty->getValue($handler));
+
+        // Second log entry immediately after
         $handler->handle($this->getRecord(Level::Debug, 'record'));
+
+        // Ensure remainingRequests was decremented to 0 after second log entry
+        $this->assertEquals(0, $remainingRequestsProperty->getValue($handler));
+
+        // Third log entry immediately after
+        $handler->handle($this->getRecord(Level::Debug, 'record'));
+
+        // Ensure remainingRequests is now 1 after third log entry
+        // Note: Would have been reset to 2 after internal throttling, then decremented to 1
+        $this->assertEquals(1, $remainingRequestsProperty->getValue($handler));
 
         // Final log entry 1 second later
         sleep(1);
         $handler->handle($this->getRecord(Level::Debug, 'record'));
+
+        // Ensure remainingRequests was decremented to 1 after final log entry
+        // Note: Would have been reset to 2 after sleep(1), then decremented
+        $this->assertEquals(1, $remainingRequestsProperty->getValue($handler));
     }
 
     public function testFormatter(): void
