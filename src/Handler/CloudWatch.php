@@ -79,7 +79,7 @@ class CloudWatch extends AbstractProcessingHandler
      *                            Only used when CloudWatch handler creates log group.
      * @param int $batchSize (Optional) Number of logs to queue before sending to CloudWatch.
      * @param array $tags (Optional) Tags to apply to log group. Only used when CloudWatch handler creates log group.
-     * @param int|string|Monolog\Level $level (Optional) The minimum logging level at which this handler will be
+     * @param int|string|\Monolog\Level $level (Optional) The minimum logging level at which this handler will be
      *                                        triggered.
      * @param bool $bubble (Optional) Whether the messages that are handled can bubble up the stack or not.
      * @param bool $createGroup (Optional) Whether to create log group if log group does not exist.
