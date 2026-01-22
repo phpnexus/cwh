@@ -214,7 +214,7 @@ class CloudWatchTest extends TestCase
             ->method('getItem')
             ->willReturnCallback(
                 function (string $key) use ($cacheItemMock, $matcher, $expected1, $expected2) {
-                    match ($matcher->getInvocationCount()) {
+                    match ($matcher->numberOfInvocations()) {
                         1 => $this->assertEquals($expected1, $key),
                         2 => $this->assertEquals($expected2, $key),
                     };
