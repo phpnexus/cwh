@@ -31,6 +31,7 @@ This library uses AWS API through AWS PHP SDK, which has limits on concurrent re
 - AWS CloudWatch Logs staff lazy loading
 - Suitable for web applications and for long-living CLI daemons and workers
 - **New!** Configurable rate limit, useful with small batch sizes on long-living CLI daemons and workers
+- **New!** Optional caching of initialization, useful in high traffic or latency sensitive environments
 
 ## Installation
 
@@ -273,7 +274,7 @@ $log->error('Baz');
 
 The [symfony/cache](https://symfony.com/doc/current/cache.html) package is a highly recommended PSR-6 cache adapter.
 
-For more information about why caching the initialization state can be beneficial, please refer to the original PR #6.
+For more information about why caching the initialization state can be beneficial, please refer to the original PR [#6](https://github.com/phpnexus/cwh/pull/6).
 
 ## Frameworks integration
 
