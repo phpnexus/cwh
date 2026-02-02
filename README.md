@@ -206,6 +206,75 @@ do {
 } while ($i++ < 500);
 ```
 
+### **New!** Caching for CloudWatch Initialization
+
+When this handler is configured with `$createGroup = true` or `$createStream = true`, it performs an initialization check with AWS CloudWatch every time the handler instance is created.
+This adds latency and risks rate limiting from AWS in high traffic environments.
+
+Thanks to @Ostico this handler now supports PSR-6 caching for the initialization, allowing the log group or stream initialization state to be cached, preventing the need for further initialization checks until the cache expires (default: 5 minutes).
+
+```php
+<?php
+
+use Aws\CloudWatchLogs\CloudWatchLogsClient;
+use Monolog\Logger;
+use Monolog\Level;
+use Monolog\Formatter\JsonFormatter;
+use PhpNexus\Cwh\Handler\CloudWatch;
+
+$sdkParams = [
+    'region' => 'eu-west-1',
+    'version' => 'latest',
+    'credentials' => [
+        'key' => 'your AWS key',
+        'secret' => 'your AWS secret',
+        'token' => 'your AWS session token', // token is optional
+    ]
+];
+
+// Instantiate AWS SDK CloudWatch Logs Client
+$client = new CloudWatchLogsClient($sdkParams);
+
+// Log group name, will be created if none
+$groupName = 'php-logtest';
+
+// Log stream name, will be created if none
+$streamName = 'ec2-instance-1';
+
+// Create cache adapter (must implement Psr\Cache\CacheItemPoolInterface)
+$cacheAdapter = new MyCacheAdapter('test-namespace');
+
+// Set cache TTL of 1 hour (default: 5 minutes)
+$cacheTtl = 3600;
+
+// Instantiate handler
+$handler = new CloudWatch(
+    $client,
+    $groupName,
+    $streamName,
+    cacheItemPool: $cacheAdapter,
+    cacheItemTtl: $cacheTtl,
+);
+
+// Optionally set the JsonFormatter to be able to access your log messages in a structured way
+$handler->setFormatter(new JsonFormatter());
+
+// Create a log channel
+$log = new Logger('name');
+
+// Set handler
+$log->pushHandler($handler);
+
+// Add records to the log
+$log->debug('Foo');
+$log->warning('Bar');
+$log->error('Baz');
+```
+
+The [symfony/cache](https://symfony.com/doc/current/cache.html) package is a highly recommended PSR-6 cache adapter.
+
+For more information about why caching the initialization state can be beneficial, please refer to the original PR #6.
+
 ## Frameworks integration
 
 - [Silex](http://silex.sensiolabs.org/doc/master/providers/monolog.html#customization)
