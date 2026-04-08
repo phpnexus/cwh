@@ -334,8 +334,11 @@ class CloudWatch extends AbstractProcessingHandler
     {
         // Check if a PSR-6 cache pool is available
         if ($this->cacheItemPool !== null) {
+            // Create a cache key based on the group name, use hash to avoid invalid characters
+            $cacheKey = 'cwh-group-' . hash('crc32c', $this->group);
+
             // Attempt to retrieve the cached state for the current log group
-            $cacheItem = $this->cacheItemPool->getItem($this->group);
+            $cacheItem = $this->cacheItemPool->getItem($cacheKey);
 
             // If the group is already cached, skip further initialization
             if ($cacheItem->isHit()) {
@@ -377,10 +380,7 @@ class CloudWatch extends AbstractProcessingHandler
         }
 
         // Check if a cache pool is configured
-        if ($this->cacheItemPool !== null) {
-            // Retrieve or create a cache item for the current log group
-            $cacheItem = $this->cacheItemPool->getItem($this->group);
-
+        if (isset($cacheItem)) {
             // Mark the log group as initialized/existing
             $cacheItem->set(true);
 
@@ -399,8 +399,11 @@ class CloudWatch extends AbstractProcessingHandler
     {
         // Check if a PSR-6 cache pool is configured
         if ($this->cacheItemPool !== null) {
+            // Create a cache key based on the stream name, use hash to avoid invalid characters
+            $cacheKey = 'cwh-stream-' . hash('crc32c', $this->stream);
+
             // Attempt to retrieve the cached state for the current log stream
-            $cacheItem = $this->cacheItemPool->getItem($this->stream);
+            $cacheItem = $this->cacheItemPool->getItem($cacheKey);
 
             // If the stream is already known to exist in cache, skip initialization
             if ($cacheItem->isHit()) {
@@ -435,10 +438,7 @@ class CloudWatch extends AbstractProcessingHandler
         }
 
         // If a cache pool is available, mark the log stream as initialized
-        if ($this->cacheItemPool !== null) {
-            // Create/retrieve a cache item using the stream name as the key
-            $cacheItem = $this->cacheItemPool->getItem($this->stream);
-
+        if (isset($cacheItem)) {
             // Set value to true to indicate the stream exists
             $cacheItem->set(true);
 
