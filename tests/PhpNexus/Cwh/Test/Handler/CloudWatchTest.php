@@ -206,8 +206,8 @@ class CloudWatchTest extends TestCase
         $cachePoolMock = $this->createMock(CacheItemPoolInterface::class);
 
         $matcher = $this->exactly(2);
-        $expected1 = $this->groupName;
-        $expected2 = $this->streamName;
+        $expected1 = 'cwh-group-' . hash('crc32c', $this->groupName);
+        $expected2 = 'cwh-stream-' . hash('crc32c', $this->streamName);
 
         $cachePoolMock
             ->expects($matcher)
